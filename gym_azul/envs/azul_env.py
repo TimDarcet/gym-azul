@@ -7,6 +7,7 @@ import pkg_resources
 import cfg_load
 from gym_azul.classes.player import Player
 from gym_azul.classes.tile import Tile
+from gym_azul.classes.box_wrapper import BoxWrapper
 from gym_azul.utils import *
 from random import shuffle
 
@@ -197,7 +198,7 @@ class AzulEnv(gym.Env):
 
     def observe(self):
         """Return the state viewed from player self.turn_to_play + 1"""
-        player_id = self.turn_to_play + 1
+        player_id = (self.turn_to_play + 1) % N_PLAYERS
         others = self.players[:player_id] + self.players[player_id + 1:]
         d = {
             "you": self.players[player_id].observe(),
