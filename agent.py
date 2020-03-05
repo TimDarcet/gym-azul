@@ -8,16 +8,19 @@ from gym_azul.envs.azul_env import AzulEnv
 
 def preprocess(state):
     """
-    TODO: converts a state to a tensor
-    """
-    pass
-
-
-def postprocess(action):
-    """
-    converts an action (integer) to an env.action
+    converts a state to a tensor
     """
 
+
+
+def postprocess(action, player_id):
+    """
+    converts an action (int in [0, 6 * 5 * (N_REPOS + 1)]) to a dictionnary
+    """
+    rep, col, row = 7 + 1, 5, 6  # /!\ 7 = N_REPOS
+    i, j, k = action % rep, (action // rep) % col, (action // (rep * col)) % row
+    env_action = {'player_id': player_id, 'take': {'repo': i, 'color': j}, 'put': k}
+    return env_action
 
 
 
@@ -30,12 +33,12 @@ class Actor(nn.Module):
         self.lin1 = nn.Linear(state_dim, hidden_dim)
         self.lin2 = nn.Linear(hidden_dim, action_dim)
 
-    def forward(self, input, logit=True):
+    def forward(self, input, logit=False):
         temp = self.lin1(input)
         score = self.lin2(F.relu(temp))
         if not logit:
             return F.softmax(score)
-        return  score
+        return score
 
 class Critic(nn.Module):
     """
@@ -48,7 +51,7 @@ class Critic(nn.Module):
         self.lin2 = nn.Linear(hidden_dim, 1)
 
     def forward(self, input):
-        temp = self.lin1(input)
+        temp = self.lin1(input.view(-1))
         score = self.lin2(F.relu(temp))
         return score
 
@@ -61,23 +64,30 @@ class Agent:
     def __init__(self, state_dim, action_dim, hidden_dim, actor_optim, critic_optim, gamma):
         self.actor = Actor(state_dim, action_dim, hidden_dim)
         self.critic = Critic(state_dim, hidden_dim)
+
         self.rewards = []
         self.values = []
         self.logodds = []
+
         self.n_actions = action_dim
         self.gamma = gamma
-        self.actor_optim = actor_optim
-        self.critic_optim = critic_optim
 
-    def play(self, state, env):
+        actor_optim.add_param_group(self.actor.parameters())
+        self.actor_optim = actor_optim
+        critic_optim.add_param_group(self.critic.parameters())
+        self.critic_optim = critic_optim(self.critic.parameters())
+
+        self.stats = {'victories': 0, 'games': 0}
+
+    def play(self, state, env, player_id):
         state = preprocess(state)  # converts into tensor
         distr = self.actor(state)
         action = np.random.choice(list(range(self.n_actions)), p=distr)
-        new_state, reward, done, _ = env.step(postprocess(action))
+        new_state, reward, done, _ = env.step(postprocess(action, player_id))
         self.rewards.append(reward)
         self.values.append(self.critic(state))
         self.logodds.append(torch.log(distr))
-        return done
+        return new_state, done
 
     def update(self):
         """
@@ -89,7 +99,7 @@ class Agent:
             Q_values[i] = self.rewards[i] + self.gamma * Q_values[i+1]
         advantages = Q_values - self.values
 
-        actor_loss = - self.logodds * advantages.detach()
+        actor_loss = - self.logodds * advantages.detach()  # advantages is static for the actor
         critic_loss = 0.5 * advantages.pow(2).mean()
         self.actor_optim.zero_grad()
         self.critic_optim.zero_grad()
