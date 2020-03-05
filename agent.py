@@ -15,8 +15,10 @@ def preprocess(state):
 
 def postprocess(action):
     """
-    TODO: converts an action to an env.action
+    converts an action (integer) to an env.action
     """
+
+
 
 
 class Actor(nn.Module):
@@ -88,13 +90,19 @@ class Agent:
         advantages = Q_values - self.values
 
         actor_loss = - self.logodds * advantages.detach()
-        critic_loss = advantages.pow(2).mean()
+        critic_loss = 0.5 * advantages.pow(2).mean()
         self.actor_optim.zero_grad()
         self.critic_optim.zero_grad()
         actor_loss.backward()
         critic_loss.backward()
         self.actor_optim.step()
         self.critic_optim.step()
+        self.reset()
+
+    def reset(self):
+        self.rewards = []
+        self.values = []
+        self.logodds = []
 
 
 
