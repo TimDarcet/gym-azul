@@ -16,3 +16,7 @@ def tile_at(i, j):
 def where_tile(l_idx, color):
     """Return where is the tile of color <color> on line <l_idx>"""
     return (l_idx + color.value) % len(Tile)
+
+def print_side_by_side(*args):
+    zip(*(a.split('\n') for a in args))
+    #TODO

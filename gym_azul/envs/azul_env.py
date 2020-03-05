@@ -137,6 +137,7 @@ class AzulEnv(gym.Env):
         self.repos = [{t: 0 for t in Tile} for _ in range(N_REPOS + 1)]  # 0 is the center repo
         self.players = [Player() for _ in range(N_PLAYERS)]
         self.fill_repos()
+        return self.observe()
 
     def render(self, mode='human'):
         print("Turn to play:", self.turn_to_play)
@@ -195,7 +196,8 @@ class AzulEnv(gym.Env):
         self.fill_repos()
 
     def observe(self):
-        player_id = self.turn_to_play
+        """Return the state viewed from player self.turn_to_play + 1"""
+        player_id = self.turn_to_play + 1
         others = self.players[:player_id] + self.players[player_id + 1:]
         d = {
             "you": self.players[player_id].observe(),
