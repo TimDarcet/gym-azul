@@ -2,6 +2,7 @@
 
 import gym
 from gym.spaces import *
+from gym_azul.classes.tile import Tile
 
 import numpy as np
 
@@ -61,8 +62,10 @@ class ConcatConvertor:
         self.convertors = list(map(convertor, space.spaces))
     else:
         # Hardcode the different encoding for the "type" space
+        items = sorted(space.spaces.items(),
+                       key=lambda x: x[0].value if isinstance(x, Tile) else x[0])
         self.convertors = [OneHotConvertor(s) if n == "type" else convertor(s)
-                           for n, s in space.spaces.items()]
+                           for n, s in items]
 
     low = np.concatenate([c.out_space.low for c in self.convertors])
     high = np.concatenate([c.out_space.high for c in self.convertors])
@@ -101,7 +104,3 @@ class BoxWrapper(gym.Wrapper):
   def reset(self):
     obs = self.env.reset()
     return self.convertor(obs)
-
-  def __call__(self):
-      print('test')
-      return "bleurk"
