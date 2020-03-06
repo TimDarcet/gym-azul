@@ -70,7 +70,7 @@ class AzulEnv(gym.Env):
 
         # Internal state
         self.turn_to_play = 0 # Whose turn is it to play
-        self.repos = [{t: 0 for t in Tile} for _ in range(N_REPOS + 1)]  # 0 is the center repo
+        self.repos = [OrderedDict(sorted({t: 0 for t in Tile}.items())) for _ in range(N_REPOS + 1)]  # 0 is the center repo
         self.players = [Player() for _ in range(N_PLAYERS)]
         # Action space
         # TODO: Boxes
@@ -92,7 +92,6 @@ class AzulEnv(gym.Env):
         # self.fill_repos()
 
     def step(self, action):
-        print("Action taken:", action)
         assert not self.ending_condition(), "Le jeu est terminé, décroche"
         assert 0 <= action["player_id"] < N_PLAYERS
         if action["player_id"] != self.turn_to_play:
@@ -137,7 +136,7 @@ class AzulEnv(gym.Env):
     def reset(self):
         assert self.all_repos_empty()
         turn_to_play = 0
-        self.repos = [{t: 0 for t in Tile} for _ in range(N_REPOS + 1)]  # 0 is the center repo
+        self.repos = [OrderedDict(sorted({t: 0 for t in Tile}.items())) for _ in range(N_REPOS + 1)]  # 0 is the center repo
         self.players = [Player() for _ in range(N_PLAYERS)]
         self.fill_repos()
         return self.observe()
@@ -180,15 +179,15 @@ class AzulEnv(gym.Env):
             shuffle(all_tiles)
             here_tiles = all_tiles[:4]
             all_tiles = all_tiles[4:]
-            self.repos[next_repo] = {t: here_tiles.count(t) for t in Tile}
+            self.repos[next_repo] = OrderedDict(sorted({t: here_tiles.count(t) for t in Tile}.items()))
             next_repo += 1
         if next_repo < N_REPOS:
-            self.repos[next_repo] = {t: all_tiles.count(t) for t in Tile}
+            self.repos[next_repo] = OrderedDict(sorted({t: all_tiles.count(t) for t in Tile}.items()))
             next_repo +=1
             while next_repo < N_REPOS:
-                self.repos[next_repo] = {t: 0 for t in Tile}
+                self.repos[next_repo] = OrderedDict(sorted({t: 0 for t in Tile}.items()))
                 next_repo +=1
-        self.repos[0] = {t: 0 for t in Tile}
+        self.repos[0] = OrderedDict(sorted({t: 0 for t in Tile}.items()))
 
     def all_repos_empty(self):
         return all(all(x == 0 for x in r.values()) for r in self.repos)

@@ -80,24 +80,24 @@ class Agent:
     def play(self, state, env, player_id):
         state = preprocess(state)  # converts into tensor
         distr = self.actor(state)
-        action = np.random.choice(list(range(self.n_actions)), p=distr)
+        action = np.random.choice(list(range(self.n_actions)), p=distr.detach().numpy())
         new_state, reward, done, _ = env.step(postprocess(action, player_id))
         self.rewards.append(reward)
         self.values.append(self.critic(state))
-        self.logodds.append(torch.log(distr))
+        self.logodds.append(torch.log(distr[action]))
         return new_state, done
 
     def update(self):
         """
         assumes that the rewards, values and loggodds sequences are continuous
         """
-        Q_values = torch.like(self.values)  # computes approximated Q-values with rewards
+        Q_values = torch.zeros(len(self.values))  # computes approximated Q-values with rewards
         Q_values[-1] = self.values[-1].detach()
         for i in range(0, len(self.values) - 1, -1):
             Q_values[i] = self.rewards[i] + self.gamma * Q_values[i+1]
-        advantages = Q_values - self.values
+        advantages = Q_values - torch.stack(self.values)
 
-        actor_loss = - self.logodds * advantages.detach()  # advantages is static for the actor
+        actor_loss = - (torch.stack(self.logodds) * advantages.detach()).mean()  # advantages is static for the actor
         critic_loss = 0.5 * advantages.pow(2).mean()
         self.actor_optim.zero_grad()
         self.critic_optim.zero_grad()
