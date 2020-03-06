@@ -1,6 +1,8 @@
 import gym
 import torch.optim as optim
+import numpy as np
 from agent import Agent
+from gym_azul.classes.box_wrapper import BoxWrapper
 
 N_EPISODES = 10
 ACTOR_LR = 1e-3
@@ -10,16 +12,16 @@ GAMMA = 0.9
 N_AGENTS = 3
 UPDATE_EVERY = 5
 
-env = gym.make("gym_azul:azul-v0")
+env = BoxWrapper(gym.make("gym_azul:azul-v0"))
 
-state_dim = env.observation_space.shape
-action_dim = env.action_space.n
+state_dim = env.observation_space.shape[0]
+action_dim = 5 * 6 * 8  # 8 = 7 + 1
 
 agents = []
 for i in range(N_AGENTS):
-    actor_optim = optim.Adam(lr=ACTOR_LR)
-    critic_optim = optim.Adam(lr=CRITIC_LR)
-    agents.append(Agent(state_dim, action_dim, HIDDEN_DIM, actor_optim, critic_optim, GAMMA))
+    actor_optim = optim.Adam
+    critic_optim = optim.Adam
+    agents.append(Agent(state_dim, action_dim, HIDDEN_DIM, actor_optim, critic_optim, ACTOR_LR, CRITIC_LR, GAMMA))
 
 for ep in range(N_EPISODES):
     state = env.reset()
