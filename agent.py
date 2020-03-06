@@ -10,7 +10,7 @@ def preprocess(state):
     """
     converts a state to a tensor
     """
-
+    return torch.Tensor(state)
 
 
 def postprocess(action, player_id):
@@ -61,7 +61,7 @@ class Agent:
     """
     An agent that can play against others
     """
-    def __init__(self, state_dim, action_dim, hidden_dim, actor_optim, critic_optim, gamma):
+    def __init__(self, state_dim, action_dim, hidden_dim, actor_optim, critic_optim, actor_lr= 1e-2, critic_lr=1e-3, gamma=0.9):
         self.actor = Actor(state_dim, action_dim, hidden_dim)
         self.critic = Critic(state_dim, hidden_dim)
 
@@ -72,10 +72,8 @@ class Agent:
         self.n_actions = action_dim
         self.gamma = gamma
 
-        actor_optim.add_param_group(self.actor.parameters())
-        self.actor_optim = actor_optim
-        critic_optim.add_param_group(self.critic.parameters())
-        self.critic_optim = critic_optim(self.critic.parameters())
+        self.actor_optim = actor_optim(self.actor.parameters(), lr=actor_lr)
+        self.critic_optim = critic_optim(self.critic.parameters(), lr=critic_lr)
 
         self.stats = {'victories': 0, 'games': 0}
 
