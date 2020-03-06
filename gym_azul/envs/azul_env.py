@@ -5,6 +5,7 @@ from gym import error, spaces, utils
 import logging.config
 import pkg_resources
 import cfg_load
+from collections import OrderedDict
 from gym_azul.classes.player import Player
 from gym_azul.classes.tile import Tile
 from gym_azul.classes.box_wrapper import BoxWrapper
@@ -116,7 +117,7 @@ class AzulEnv(gym.Env):
             if p.queues[q_id][0] is not None and p.queues[q_id][0] != color:
                 return self.invalid_action()  # Queue was taken
             if p.square[q_id][where_tile(q_id, color)]:
-                return self.invalid_action  # Queue already done for this color
+                return self.invalid_action()  # Queue already done for this color
             p.penalties += max(0, p.queues[q_id][1] + n_tiles - (q_id + 1))
             p.queues[q_id][1] = min(p.queues[q_id][1] + n_tiles, q_id + 1)
             p.queues[q_id][0] = color
@@ -200,11 +201,11 @@ class AzulEnv(gym.Env):
         """Return the state viewed from player self.turn_to_play + 1"""
         player_id = (self.turn_to_play + 1) % N_PLAYERS
         others = self.players[:player_id] + self.players[player_id + 1:]
-        d = {
+        d = OrderedDict(sorted({
             "you": self.players[player_id].observe(),
             "others": tuple(p.observe() for p in others),
             "repos": tuple(self.repos)
-        }
+        }.items()))
         return d
 
     def ending_condition(self):

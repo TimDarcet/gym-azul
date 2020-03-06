@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from gym_azul.utils import *
 
 penalty_score = [0, -1, -2, -4, -6, -8, -11, -14]
@@ -33,13 +34,13 @@ class Player:
         self.penalties = 0
 
     def observe(self):
-        d = {
+        d = OrderedDict(sorted({
             "points": self.score,
             "square": tuple(list(map(int, self.square[i])) for i in range(5)),
             "queues": tuple({"type": q[0] if q[0] is None else q[0].value, "num": q[1]}
                             for q in self.queues),
             "penalties": self.penalties
-        }
+        }.items()))
         return d
 
     def __str__(self):
@@ -66,11 +67,11 @@ class Player:
         # Special bonuses
         if all(self.square[i][k] for k in range(5)):
             print("Line completed")
-            score += 2
+            self.score += 2
         if all(self.square[k][j] for k in range(5)):
             print("Column completed")
-            score += 7
+            self.score += 7
         if all(self.square[k][where_tile(k, tile_at(i, j))] for k in range(5)):
             print("Color completed")
-            score += 10
+            self.score += 10
         

@@ -1,5 +1,6 @@
 # From https://github.com/vladfi1/gym-dolphin/blob/master/dolphin/box_wrapper.py
 
+from collections import OrderedDict
 import gym
 from gym.spaces import *
 
@@ -47,8 +48,8 @@ class LinearIntConvertor:
     self.out_space = Box(0, space.n - 1, [1], dtype=int)
   
   def __call__(self, x):
-    assert(self.in_space.contains(x))
-    assert(self.out_space.contains(x))
+    # assert(self.in_space.contains(x))
+    # assert(self.out_space.contains(x))
     return x
 
 
@@ -70,8 +71,13 @@ class ConcatConvertor:
     self.out_space = Box(low, high)
   
   def __call__(self, xs):
-    #assert(self.in_space.contains(xs))
-    return np.concatenate([c(x) for c, x in zip(self.convertors, xs)])
+    # assert(self.in_space.contains(xs))
+    if isinstance(xs, OrderedDict):
+      return np.concatenate([c(x) for c, x in zip(self.convertors, xs.values())])
+    if isinstance(xs, tuple):
+      print(xs, '\n', self.convertors)
+      return np.concatenate([c(x) for c, x in zip(self.convertors, xs)])
+
 
 def convertor(space):
   if isinstance(space, Box):
