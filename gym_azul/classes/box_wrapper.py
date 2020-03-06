@@ -3,6 +3,7 @@
 from collections import OrderedDict
 import gym
 from gym.spaces import *
+from gym_azul.classes.tile import Tile
 
 import numpy as np
 
@@ -29,6 +30,20 @@ class OneHotConvertor:
     a = np.zeros([self.in_space.n])
     a[x] = 1
     return a
+
+class TileConvertor:
+  def __init__(self, space):
+    assert(isinstance(space, Discrete))
+    self.in_space = space
+    self.out_space = Box(0, 1, [space.n - 1])
+  
+  def __call__(self, x):
+    assert(self.in_space.contains(x))
+    a = np.zeros([self.in_space.n])
+    if x is not None:
+      a[x] = 1
+    return a
+
 
 class MultiBinConvertor:
   def __init__(self, space):
@@ -62,8 +77,10 @@ class ConcatConvertor:
         self.convertors = list(map(convertor, space.spaces))
     else:
         # Hardcode the different encoding for the "type" space
-        self.convertors = [OneHotConvertor(s) if n == "type" else convertor(s)
-                           for n, s in space.spaces.items()]
+        items = sorted(space.spaces.items(),
+                       key=lambda x: x[0].value if isinstance(x, Tile) else x[0])
+        self.convertors = [TileConvertor(s) if n == "type" else convertor(s)
+                           for n, s in items]
 
     low = np.concatenate([c.out_space.low for c in self.convertors])
     high = np.concatenate([c.out_space.high for c in self.convertors])
@@ -107,7 +124,3 @@ class BoxWrapper(gym.Wrapper):
   def reset(self):
     obs = self.env.reset()
     return self.convertor(obs)
-
-  def __call__(self):
-      print('test')
-      return "bleurk"
