@@ -14,7 +14,7 @@ UPDATE_EVERY = 5
 
 env = BoxWrapper(gym.make("gym_azul:azul-v0"))
 
-state_dim = 100 # env.observation_space.shape[0]
+state_dim = env.observation_space.shape[0]
 action_dim = 5 * 6 * 8  # 8 = 7 + 1
 
 agents = []
