@@ -100,12 +100,12 @@ class AzulEnv(gym.Env):
         # Take the tiles
         repo = action["take"]["repo"]
         color = list(Tile)[action["take"]["color"]]
-        if self.repos[repo][color] == 0:  # He took at least one tile
+        if self.repos[repo][color] == 0:  # He took at zero tile
             return self.invalid_action()
         n_tiles = self.repos[repo][color]
         # Remove all tiles from repo and put the tiles not taken in the center6
         for t in Tile:
-            if t != color:
+            if t != color and repo != 0:
                 self.repos[0][t] += self.repos[repo][t]
             self.repos[repo][t] = 0
         # Place the tiles
@@ -126,6 +126,7 @@ class AzulEnv(gym.Env):
         player_id = self.turn_to_play
         done = False
         if self.all_repos_empty():
+            # Round ended
             self.end_round()
             if self.ending_condition():
                 done = True
