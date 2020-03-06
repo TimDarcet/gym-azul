@@ -30,6 +30,20 @@ class OneHotConvertor:
     a[x] = 1
     return a
 
+class TileConvertor:
+  def __init__(self, space):
+    assert(isinstance(space, Discrete))
+    self.in_space = space
+    self.out_space = Box(0, 1, [space.n - 1])
+  
+  def __call__(self, x):
+    assert(self.in_space.contains(x))
+    a = np.zeros([self.in_space.n])
+    if x is not None:
+      a[x] = 1
+    return a
+
+
 class MultiBinConvertor:
   def __init__(self, space):
     assert(isinstance(space, MultiBinary))
@@ -64,7 +78,7 @@ class ConcatConvertor:
         # Hardcode the different encoding for the "type" space
         items = sorted(space.spaces.items(),
                        key=lambda x: x[0].value if isinstance(x, Tile) else x[0])
-        self.convertors = [OneHotConvertor(s) if n == "type" else convertor(s)
+        self.convertors = [TileConvertor(s) if n == "type" else convertor(s)
                            for n, s in items]
 
     low = np.concatenate([c.out_space.low for c in self.convertors])
