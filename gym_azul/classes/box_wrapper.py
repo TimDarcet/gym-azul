@@ -9,6 +9,7 @@ import numpy as np
 
 __all__ = ['BoxWrapper']
 
+
 class FlattenConvertor:
   def __init__(self, space):
     assert(isinstance(space, Box))
@@ -84,16 +85,15 @@ class ConcatConvertor:
 
     low = np.concatenate([c.out_space.low for c in self.convertors])
     high = np.concatenate([c.out_space.high for c in self.convertors])
-    
+
     self.out_space = Box(low, high)
-  
+
   def __call__(self, xs):
     # assert(self.in_space.contains(xs))
     if isinstance(xs, OrderedDict):
-      return np.concatenate([c(x) for c, x in zip(self.convertors, xs.values())])
+      return np.hstack([c(x) for c, x in zip(self.convertors, xs.values())])
     if isinstance(xs, tuple):
-      print(xs, '\n', self.convertors)
-      return np.concatenate([c(x) for c, x in zip(self.convertors, xs)])
+      return np.hstack([c(x) for c, x in zip(self.convertors, xs)])
 
 
 def convertor(space):
