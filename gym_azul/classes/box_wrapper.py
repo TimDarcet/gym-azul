@@ -39,7 +39,7 @@ class TileConvertor:
   
   def __call__(self, x):
     assert(self.in_space.contains(x))
-    a = np.zeros([self.in_space.n])
+    a = np.zeros([self.in_space.n - 1])
     if x is not None:
       a[x] = 1
     return a
