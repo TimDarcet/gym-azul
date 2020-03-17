@@ -37,7 +37,7 @@ class Player:
         d = OrderedDict(sorted({
             "points": self.score,
             "square": tuple(list(map(int, self.square[i])) for i in range(5)),
-            "queues": tuple({"type": q[0] if q[0] is None else q[0].value, "num": q[1]}
+            "queues": tuple(OrderedDict(sorted({"type": q[0] if q[0] is None else q[0].value, "num": q[1]}.items()))
                             for q in self.queues),
             "penalties": self.penalties
         }.items()))

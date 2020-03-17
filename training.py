@@ -27,11 +27,14 @@ for ep in range(N_EPISODES):
     state = env.reset()
     done = False
     counter = 0
+    print('Game {}/{}'.format(ep, N_EPISODES))
     while not done:
         update = counter % UPDATE_EVERY
         counter += 1
+        print('\rMove {}'.format(counter), end='')
         for id, agent in enumerate(agents):
             state, done = agent.play(state, env, id)
             if update:
                 agent.update()
+        print('')
 
