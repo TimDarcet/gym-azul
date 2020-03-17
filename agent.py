@@ -17,7 +17,7 @@ def postprocess(action, player_id):
     """
     converts an action (int in [0, 6 * 5 * (N_REPOS + 1)]) to a dictionnary
     """
-    rep, col, row = 7 + 1, 5, 6  # /!\ 7 = N_REPOS
+    rep, col, row = 7 + 1, 5, 6  # MEF: 7 = N_REPOS
     i, j, k = action % rep, (action // rep) % col, (action // (rep * col)) % row
     env_action = {'player_id': player_id, 'take': {'repo': i, 'color': j}, 'put': k}
     return env_action

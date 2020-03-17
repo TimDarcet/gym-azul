@@ -73,7 +73,6 @@ class AzulEnv(gym.Env):
         self.repos = [{t: 0 for t in Tile} for _ in range(N_REPOS + 1)]  # 0 is the center repo
         self.players = [Player() for _ in range(N_PLAYERS)]
         # Action space
-        # TODO: Boxes
         self.action_space = spaces.Dict({
             "player_id": spaces.Discrete(N_PLAYERS),
             "take": spaces.Dict({
@@ -83,7 +82,6 @@ class AzulEnv(gym.Env):
             "put": spaces.Discrete(5 + 1)
         })
         # Observation space
-        # TODO: Boxes
         self.observation_space = spaces.Dict({
             "you": player_space,
             "others": spaces.Tuple(tuple([player_space] * (N_PLAYERS - 1))),
@@ -95,33 +93,28 @@ class AzulEnv(gym.Env):
         print("Action taken:", action)
         assert not self.ending_condition(), "Le jeu est terminé, décroche"
         assert 0 <= action["player_id"] < N_PLAYERS
+        # The player ID is redundant, it is only used to check if the agent is properly working
         if action["player_id"] != self.turn_to_play:
+            print("Wrong player ID")
             return self.invalid_action()
         p = self.players[self.turn_to_play]
         # Take the tiles
         repo = action["take"]["repo"]
         color = list(Tile)[action["take"]["color"]]
-        if self.repos[repo][color] == 0:  # He took at zero tile
+        if self.repos[repo][color] == 0:  # He took zero tile
             return self.invalid_action()
         n_tiles = self.repos[repo][color]
-        # Remove all tiles from repo and put the tiles not taken in the center6
+        # Remove all tiles from repo and put the tiles not taken in the center
         for t in Tile:
             if t != color and repo != 0:
                 self.repos[0][t] += self.repos[repo][t]
             self.repos[repo][t] = 0
         # Place the tiles
         q_id = action["put"]
-        if q_id == 5:
-            p.penalties = min(p.penalties + n_tiles, MAX_PENALTY)
-        else:
-            if p.queues[q_id][0] is not None and p.queues[q_id][0] != color:
-                return self.invalid_action()  # Queue was taken
-            if p.square[q_id][where_tile(q_id, color)]:
-                return self.invalid_action()  # Queue already done for this color
-            p.penalties += max(0, p.queues[q_id][1] + n_tiles - (q_id + 1))
-            p.queues[q_id][1] = min(p.queues[q_id][1] + n_tiles, q_id + 1)
-            p.queues[q_id][0] = color
-            assert p.queues[q_id][1] <= q_id + 1  # Check the length of the queue was not exceeded
+        valid_action, points_won = p.place_tile(color, n_tiles, q_id)
+        if not valid_action:
+            return self.invalid_action()
+        # End turn
         self.turn_to_play = (self.turn_to_play + 1) % N_PLAYERS
         state = self.observe()
         player_id = self.turn_to_play
@@ -132,7 +125,7 @@ class AzulEnv(gym.Env):
             if self.ending_condition():
                 done = True
                 self.close()
-        return state, 0, done, {}
+        return state, points_won, done, {}
 
     def reset(self):
         assert self.all_repos_empty()

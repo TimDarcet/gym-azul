@@ -54,24 +54,54 @@ class Player:
     def update_score(self, i, j):
         """Update score after having placed tile (i, j)"""
         assert self.square[i][j], "Tile was not actually placed !"
+        self.score += self.get_score(i, j)
+
+    def get_score(self, i, j):
+        """Get score won for placing tile (i, j)"""
+        score = 0
         for k in range(5):
             # Count point added for tile i, k (horizontal tiles)
             a = min(j, k)
             b = max(j, k)
-            self.score += int(all(self.square[i][l] for l in range(a, b + 1)))
+            score += int(all(self.square[i][l] for l in range(a, b + 1)))
         for k in range(5):
             # Count point added for tile k, j (vertical tiles)
             a = min(i, k)
             b = max(i, k)
-            self.score += int(all(self.square[l][j] for l in range(a, b + 1)))
+            score += int(all(self.square[l][j] for l in range(a, b + 1)))
         # Special bonuses
         if all(self.square[i][k] for k in range(5)):
             print("Line completed")
-            self.score += 2
+            score += 2
         if all(self.square[k][j] for k in range(5)):
             print("Column completed")
-            self.score += 7
+            score += 7
         if all(self.square[k][where_tile(k, tile_at(i, j))] for k in range(5)):
             print("Color completed")
-            self.score += 10
+            score += 10
+        return score
         
+    def place_tile(self, color, n_tiles, q_id):
+        points_won = 0
+        if q_id == 5:
+            new_pen = min(self.penalties + n_tiles, len(penalty_score) - 1)
+            points_won += penalty_score[new_pen] - penalty_score[self.penalties]
+            self.penalties = new_pen
+        else:
+            if self.queues[q_id][0] is not None and self.queues[q_id][0] != color:
+                # Queue was taken
+                return False
+            if self.square[q_id][where_tile(q_id, color)]:
+                # Queue already done for this color
+                return False
+            if self.queues[q_id][1] + n_tiles > q_id + 1:
+                # Take some penalties
+                new_pen = self.penalties + self.queues[q_id][1] + n_tiles - (q_id + 1)
+                points_won += penalty_score[new_pen] - penalty_score[self.penalties]
+                self.penalties = new_pen
+            new_len = min(self.queues[q_id][1] + n_tiles, q_id + 1)
+            if self.queues[q_id][1] < q_id + 1 and new_len == q_id + 1:
+                points_won += self.get_score(q_id, where_tile(q_id, color))
+            self.queues[q_id][1] = new_len
+            self.queues[q_id][0] = color
+        return True, points_won
