@@ -88,12 +88,8 @@ class Player:
             points_won += penalty_score[new_pen] - penalty_score[self.penalties]
             self.penalties = new_pen
         else:
-            if self.queues[q_id][0] is not None and self.queues[q_id][0] != color:
-                # Queue was taken
-                return False
-            if self.square[q_id][where_tile(q_id, color)]:
-                # Queue already done for this color
-                return False
+            if not self.is_valid(color, q_id):
+                return False, None
             if self.queues[q_id][1] + n_tiles > q_id + 1:
                 # Take some penalties
                 new_pen = self.penalties + self.queues[q_id][1] + n_tiles - (q_id + 1)
@@ -105,3 +101,18 @@ class Player:
             self.queues[q_id][1] = new_len
             self.queues[q_id][0] = color
         return True, points_won
+
+    def is_valid(self, color, q_id):
+        """
+        checks if the player can place the color into the queue q_id
+        """
+        if q_id == 5:
+            # it's the penalty queue
+            return True
+        if self.queues[q_id][0] is not None and self.queues[q_id][0] != color:
+            # Queue was taken
+            return False
+        if self.square[q_id][where_tile(q_id, color)]:
+            # Queue already done for this color
+            return False
+        return True

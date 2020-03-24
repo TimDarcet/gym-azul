@@ -9,13 +9,14 @@ ACTOR_LR = 1e-3
 CRITIC_LR = 1e-4
 HIDDEN_DIM = 32
 GAMMA = 0.9
-N_AGENTS = 3
+N_AGENTS = 2
+N_REPOS = 7
 UPDATE_EVERY = 5
 
-env = BoxWrapper(gym.make("gym_azul:azul-v0"))
+env = BoxWrapper(gym.make("gym_azul:azul-v0", n_players=N_AGENTS, n_repos=N_REPOS))
 
 state_dim = env.observation_space.shape[0]
-action_dim = 5 * 6 * 8  # 8 = 7 + 1
+action_dim = 5 * 6 * (N_REPOS + 1)
 
 agents = []
 for i in range(N_AGENTS):
