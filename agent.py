@@ -2,8 +2,6 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 import numpy as np
-import gym
-from gym_azul.envs.azul_env import AzulEnv
 
 
 def preprocess(state):
@@ -37,7 +35,7 @@ class Actor(nn.Module):
         temp = self.lin1(input)
         score = self.lin2(F.relu(temp))
         if not logit:
-            return F.softmax(score)
+            return F.softmax(score, dim=-1)
         return score
 
 class Critic(nn.Module):
@@ -61,12 +59,25 @@ class RandomAgent:
     An agent playing randomly
     """
 
+    def __init__(self):
+        self.stats = {'victories': 0, 'games': 0}
+
     def play(self, state, env, player_id):
         action = env.sample_action()
         new_state, _, done, _ = env.step(action)
         return new_state, done
 
     def update(self):
+        pass
+
+    def next_game(self, result):
+        self.stats['victories'] += result
+        self.stats['games'] += 1
+
+    def load(self, path):
+        pass
+
+    def save(self, path):
         pass
 
 
@@ -87,7 +98,10 @@ class Agent:
         self.values = [[] for _ in range(self.nb_channels)]
         self.logodds = [[] for _ in range(self.nb_channels)]
 
-        self.n_actions = action_dim
+        # some info
+        self.action_dim = action_dim
+        self.state_dim = state_dim
+        self.hidden_dim = hidden_dim
         self.gamma = gamma
 
         # initializes optimizers
@@ -97,11 +111,16 @@ class Agent:
         self.stats = {'victories': 0, 'games': 0}
 
     def play(self, state, env, player_id):
-        channel_id = player_id  # only considers the case where the agent plays for different players, no different games !!
         state = preprocess(state)  # converts into tensor
         distr = self.actor(state)
-        action = np.random.choice(list(range(self.n_actions)), p=distr.detach().numpy())
+        action = np.random.choice(list(range(self.action_dim)), p=distr.detach().numpy())
         new_state, reward, done, _ = env.step(postprocess(action, player_id, env.n_repos))
+
+        # records history for updating weights later
+        if self.nb_channels > 1:
+            channel_id = player_id  # only considers the case where the agent plays for different players, no different games !!
+        else:
+            channel_id = 0
         self.rewards[channel_id].append(reward)
         self.values[channel_id].append(self.critic(state))
         self.logodds[channel_id].append(torch.log(distr[action]))
@@ -111,6 +130,8 @@ class Agent:
         """
         assumes that the rewards, values and loggodds sequences are contiguous in each channel
         """
+        if not self.values[0]:
+            return
         for channel in range(self.nb_channels):
             Q_values = torch.zeros(len(self.values[channel]))  # computes approximated Q-values with rewards
             Q_values[-1] = self.values[channel][-1].detach()
@@ -134,5 +155,23 @@ class Agent:
         self.values = [[] for _ in range(self.nb_channels)]
         self.logodds = [[] for _ in range(self.nb_channels)]
 
+    def next_game(self, result):
+        self.stats['victories'] += result
+        self.stats['games'] += 1
+        self.reset()  # to be sure
+
+    def save(self, path):
+        torch.save({'shape': (self.state_dim, self.hidden_dim, self.action_dim),
+                    'actor_weights': self.actor.state_dict(),
+                    'critic_weights': self.critic.state_dict(),
+                    'actor_optim': self.actor_optim.state_dict(),
+                    'critic_optim': self.critic_optim.state_dict()}, path)
+
+    def load(self, path):
+        model = torch.load(path)
+        self.actor.load_state_dict(model['actor_weights'])
+        self.critic.load_state_dict(model['critic_weights'])
+        self.actor_optim.load_state_dict(model['actor_optim'])
+        self.critic_optim.load_state_dict(model['critic_optim'])
 
 

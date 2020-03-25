@@ -263,3 +263,9 @@ class AzulEnv(gym.Env):
 
         action = {'player_id': player_id, 'take': {'repo': repo, 'color': color}, 'put': queue}
         return action
+
+    def get_winner(self):
+        """
+        returns id and score of the winner
+        """
+        return max([(i, p.score) for i, p in enumerate(self.players)], key=lambda x: x[1])

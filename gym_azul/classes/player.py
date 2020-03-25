@@ -56,7 +56,7 @@ class Player:
         assert self.square[i][j], "Tile was not actually placed !"
         self.score += self.get_score(i, j)
 
-    def get_score(self, i, j):
+    def get_score(self, i, j, verbose=False):
         """Get score won for placing tile (i, j)"""
         score = 0
         for k in range(5):
@@ -71,13 +71,13 @@ class Player:
             score += int(all(self.square[l][j] for l in range(a, b + 1)))
         # Special bonuses
         if all(self.square[i][k] for k in range(5)):
-            print("Line completed")
+            if verbose: print("Line completed")
             score += 2
         if all(self.square[k][j] for k in range(5)):
-            print("Column completed")
+            if verbose: print("Column completed")
             score += 7
         if all(self.square[k][where_tile(k, tile_at(i, j))] for k in range(5)):
-            print("Color completed")
+            if verbose: print("Color completed")
             score += 10
         return score
         
