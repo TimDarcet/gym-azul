@@ -273,3 +273,23 @@ class AzulEnv(gym.Env):
 
     def set_tolerant(self, bool):
         self.tolerant = bool
+
+    def valid_actions(self):
+        """
+        Return the list of valid actions
+        """
+        player_id = self.turn_to_play
+        p = self.players[player_id]
+        valid_actions = []
+        for repo in range(self.n_repos):
+            for color_id in range(5):
+                color = list(Tile)[color_id]
+                if self.repos[repo][color] > 0:  # check that there are indeed tiles of this color in the repo
+                    for queue in range(6):
+                        if p.is_valid(color, queue):  # check that the player can put the color into this queue
+                            valid_actions.append((repo, color_id, queue))
+        return list(map(lambda repo, color, queue: {'player_id': player_id,
+                                                    'take': {'repo': repo, 'color': color},
+                                                    'put': queue},
+                        valid_actions))
+
