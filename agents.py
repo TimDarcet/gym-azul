@@ -223,36 +223,7 @@ class A2CAgent(Agent):
         self.actor_optim.load_state_dict(model['actor_optim'])
         self.critic_optim.load_state_dict(model['critic_optim'])
 
-class MCT:
-    """
-    A Monte-Carlo tree
-    """
-    def __init__(self):
-        self.action = None
-        self.n_plays = 0
-        self.n_wins = 0
-        self.children = []
-    
-    def go_down(self, state):
-        if len(children) > 0:
-            child = random.choice(self.children)
 
 
-class MCTSAgent(Agent):
-    """
-    An agent playing randomly
-    """
 
-    def __init__(self):
-        super().__init__()
-        self.mct = None
 
-    def play(self, state, env, player_id):
-        if self.mct is None:
-            self.mct = MCT()
-            self.mct.children = env.valid_actions()
-        start_t = time.time()
-        while time.time() - start_t < 2:
-            
-        new_state, _, done, _ = env.step(action)
-        return new_state, done
