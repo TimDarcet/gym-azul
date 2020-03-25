@@ -234,7 +234,7 @@ class MCT:
         self.n_wins = 0
         self.children = []
     
-    def go_down(self, env):
+    def go_down(self, env, player_id):
         if len(children) > 0:
             child = random.choices(self.children, weights=[n.n_wins/n.n_plays for n in self.children]) # TODO: better choice
             env.step(child.action)
@@ -253,7 +253,7 @@ class MCT:
             while not done:
                 cur_node = random.choice(cur_node.children)
                 _, _, done, _ = env.step(cur_node.action)
-            win = None #TODO get if that was a win
+            win = player_id == env.get_winner()
             child.n_plays += 1
             self.n_plays += 1
             if win:
@@ -285,7 +285,7 @@ class MCTSAgent(Agent):
         while time.time() - start_t < 2:
             env = gym.make("gym_azul:azul-v0", n_players=2) #MEF: Hardcoded n_players
             env.load_state(state)
-            self.mct.go_down(env)
+            self.mct.go_down(env, player_id)
         child = max(self.mct.children, key=lambda n:n.n_wins/n.n_plays) #TODO: Could be better function for choice
         new_state, _, done, _ = env.step(child.action)
         self.mct = child
