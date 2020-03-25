@@ -92,7 +92,7 @@ class Player:
                 return False, None
             if self.queues[q_id][1] + n_tiles > q_id + 1:
                 # Take some penalties
-                new_pen = self.penalties + self.queues[q_id][1] + n_tiles - (q_id + 1)
+                new_pen = min(self.penalties + self.queues[q_id][1] + n_tiles - (q_id + 1), len(penalty_score) - 1)
                 points_won += penalty_score[new_pen] - penalty_score[self.penalties]
                 self.penalties = new_pen
             new_len = min(self.queues[q_id][1] + n_tiles, q_id + 1)

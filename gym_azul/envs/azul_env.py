@@ -61,12 +61,22 @@ repo_space = spaces.Dict({t: spaces.Discrete(21) for t in Tile})
 class AzulEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, n_players=2, n_repos=7):
+    def __init__(self, n_players=2):
         self.__version__ = "0.0.1"
         logging.info("AzulEnv - Version {}".format(self.__version__))
         
         self.n_players = n_players
-        self.n_repos = n_repos
+
+        # initializes repositories
+        if self.n_players == 2:
+            self.n_repos = 5
+        elif self.n_players == 3:
+            self.n_repos = 7
+        elif self.n_players == 4:
+            self.n_repos = 9
+        else:
+            raise ValueError("n_players must be 2, 3 or 4")
+
         # Internal state
         self.turn_to_play = 0 # Whose turn is it to play
         self.repos = [OrderedDict(sorted({t: 0 for t in Tile}.items())) for _ in range(self.n_repos + 1)]  # 0 is the center repo
@@ -95,6 +105,7 @@ class AzulEnv(gym.Env):
         if action["player_id"] != self.turn_to_play:
             print("Wrong player ID: expected {} but got {}".format(self.turn_to_play, action["player_id"]))
             return self.invalid_action()
+
         p = self.players[self.turn_to_play]
         # Take the tiles
         repo = action["take"]["repo"]
@@ -102,16 +113,25 @@ class AzulEnv(gym.Env):
         if self.repos[repo][color] == 0:  # He took zero tile
             return self.invalid_action()
         n_tiles = self.repos[repo][color]
-        # Remove all tiles from repo and put the tiles not taken in the center
-        for t in Tile:
-            if t != color and repo != 0:
-                self.repos[0][t] += self.repos[repo][t]
-            self.repos[repo][t] = 0
-        # Place the tiles
         q_id = action["put"]
-        valid_action, points_won = p.place_tile(color, n_tiles, q_id)
-        if not valid_action:
+
+        # Check action validity
+        if not p.is_valid(color, q_id):
             return self.invalid_action()
+
+        # Update repos
+        if repo != 0:
+            # If the repo is not the center, remove all tiles from repo and put the tiles not taken in the center
+            for t in Tile:
+                if t != color:
+                    self.repos[0][t] += self.repos[repo][t]
+                self.repos[repo][t] = 0
+        else:
+            # If the repo is the center, just remove the chosen color
+            self.repos[repo][color] = 0
+
+        # Place the tiles
+        valid_action, points_won = p.place_tile(color, n_tiles, q_id)
         # End turn
         self.turn_to_play = (self.turn_to_play + 1) % self.n_players
         state = self.observe()
@@ -126,8 +146,7 @@ class AzulEnv(gym.Env):
         return state, points_won, done, {}
 
     def reset(self):
-        assert self.all_repos_empty()
-        turn_to_play = 0
+        self.turn_to_play = 0
         self.repos = [OrderedDict(sorted({t: 0 for t in Tile}.items())) for _ in range(self.n_repos + 1)]  # 0 is the center repo
         self.players = [Player() for _ in range(self.n_players)]
         self.fill_repos()
@@ -190,8 +209,8 @@ class AzulEnv(gym.Env):
         self.fill_repos()
 
     def observe(self):
-        """Return the state viewed from player self.turn_to_play + 1"""
-        player_id = (self.turn_to_play + 1) % self.n_players
+        """Return the state viewed from player self.turn_to_play"""
+        player_id = self.turn_to_play
         others = self.players[:player_id] + self.players[player_id + 1:]
         d = OrderedDict(sorted({
             "you": self.players[player_id].observe(),
@@ -201,7 +220,10 @@ class AzulEnv(gym.Env):
         return d
 
     def ending_condition(self):
-        return any(any(all(l) for l in p.square) for p in self.players)
+        """
+        game ends if any of the players have a full line in their square
+        """
+        return any(any(all(line) for line in p.square) for p in self.players)
 
     def is_valid(self, action):
         action["player_id"] == self.turn_to_play
@@ -214,12 +236,10 @@ class AzulEnv(gym.Env):
         If sample == True (necessary otherwise the game gets stuck), samples a random valid action, if not does nothing
         """
         if sample:
-            print("invalid action, sampled a random one")
             replacement = self.sample_action()
             state, _, done, _ = self.step(replacement)
             return state, -100, done, {}
         else:
-            print("invalid action, does nothing")
             self.turn_to_play = (self.turn_to_play + 1) % self.n_players
             return self.observe(), -100, self.ending_condition(), {}
 
