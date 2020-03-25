@@ -5,6 +5,7 @@ import numpy as np
 import time
 import random
 from gym_azul.classes.box_wrapper import convertor
+import gym
 
 def preprocess(state):
     """
@@ -233,9 +234,33 @@ class MCT:
         self.n_wins = 0
         self.children = []
     
-    def go_down(self, state):
+    def go_down(self, env):
         if len(children) > 0:
+            child = random.choices(self.children, weights=[n.n_wins/n.n_plays for n in self.children]) # TODO: better choice
+            env.step(child.action)
+            win = child.go_down(env)
+            self.n_plays += 1
+            if win:
+                self.n_wins += 1
+            return win
+        else:
+            for act in env.valid_actions():
+                self.mct.children.append(MCT())
+                self.mct.children[-1].action = act
             child = random.choice(self.children)
+            cur_node = child
+            done = False
+            while not done:
+                cur_node = random.choice(cur_node.children)
+                _, _, done, _ = env.step(cur_node.action)
+            win = None #TODO get if that was a win
+            child.n_plays += 1
+            self.n_plays += 1
+            if win:
+                child.n_wins +=1
+                self.n_wins +=1
+            return win
+
 
 
 class MCTSAgent(Agent):
@@ -245,14 +270,24 @@ class MCTSAgent(Agent):
 
     def __init__(self):
         super().__init__()
-        self.mct = None
+        self.mct = MCT()
+        self.dirty = False
 
     def play(self, state, env, player_id):
-        if self.mct is None:
-            self.mct = MCT()
-            self.mct.children = env.valid_actions()
+        if dirty:
+            for child in self.mct.children:
+                env.step(child.action)
+                if env.observe() == state: #TODO: is this an efficient comparison ?
+                    self.mct = child
+                    break
+                env.load_state(state)
         start_t = time.time()
         while time.time() - start_t < 2:
-            
-        new_state, _, done, _ = env.step(action)
+            env = gym.make("gym_azul:azul-v0", n_players=2) #MEF: Hardcoded n_players
+            env.load_state(state)
+            self.mct.go_down(env)
+        child = max(self.mct.children, key=lambda n:n.n_wins/n.n_plays) #TODO: Could be better function for choice
+        new_state, _, done, _ = env.step(child.action)
+        self.mct = child
+        self.dirty = True
         return new_state, done
