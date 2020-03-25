@@ -1,7 +1,7 @@
 import gym
 import os
 import torch.optim as optim
-from agents import A2CAgent, RandomAgent, HumanAgent
+from agents import A2CAgent, RandomAgent, HumanAgent, MCTSAgent
 
 
 # learning parameters
@@ -10,7 +10,9 @@ PLAYING_MODE = 'self'
 # 'self' -> self play,
 # 'adversarial' -> several networks learn against each others,
 # 'random' -> against a random baseline
+# 'mcts' against a MCTS baseline
 # 'manual' -> against a human
+
 TRAINING = True
 GAMMA = 0.98  # weight of future rewards
 UPDATE_EVERY = 15  # how many moves to play before updating (15 = update about twice a game)
@@ -73,6 +75,17 @@ if PLAYING_MODE == 'random':
     agents.append(agent)
     for i in range(N_PLAYERS - 1):
         agents.append(RandomAgent())
+
+if PLAYING_MODE == 'mcts':
+    assert N_PLAYERS == 2  # only number supported yet
+    # 1 learning agent and 1 MCTS agent
+    actor_optim = optim.Adam
+    critic_optim = optim.Adam
+    agent = A2CAgent(env, HIDDEN_DIM, actor_optim, critic_optim, ACTOR_LR, CRITIC_LR, GAMMA)
+    if load_from:
+        agent.load(load_from)
+    agents.append(agent)
+    agents.append(MCTSAgent())
 
 if PLAYING_MODE == 'manual':
     # 1 agent and 1 human

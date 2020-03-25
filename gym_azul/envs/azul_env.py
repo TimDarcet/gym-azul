@@ -113,11 +113,13 @@ class AzulEnv(gym.Env):
         repo = action["take"]["repo"]
         color = list(Tile)[action["take"]["color"]]
         if self.repos[repo][color] == 0:  # repos validity: the player took zero tile
+            print('Player tried to take non existent tiles')
             return self.invalid_action()
         n_tiles = self.repos[repo][color]
         q_id = action["put"]
 
         if not p.is_valid(color, q_id):  # 'put' action validity
+            print('Player tried to put tiles somewhere forbidden')
             return self.invalid_action()
 
         # Update repos
@@ -248,21 +250,10 @@ class AzulEnv(gym.Env):
         """
         uniformly samples an action from all possible valid actions
         """
-        player_id = self.turn_to_play
-        p = self.players[player_id]
-        valid_actions = []
-        for repo in range(self.n_repos):
-            for color_id in range(5):
-                color = list(Tile)[color_id]
-                if self.repos[repo][color] > 0:  # check that there are indeed tiles of this color in the repo
-                    for queue in range(6):
-                        if p.is_valid(color, queue):  # check that the player can put the color into this queue
-                            valid_actions.append((repo, color_id, queue))
-
-        repo, color, queue = choice(valid_actions)  # uniform sampling
-        # valid_action is never empty because the player can always take tiles as penalty
-
-        action = {'player_id': player_id, 'take': {'repo': repo, 'color': color}, 'put': queue}
+        if self.ending_condition():
+            return None
+        valid_actions = self.valid_actions()
+        action = choice(valid_actions)  # uniform sampling
         return action
 
     def get_winner(self):
@@ -278,6 +269,8 @@ class AzulEnv(gym.Env):
         """
         Return the list of valid actions
         """
+        if self.ending_condition():
+            return []
         player_id = self.turn_to_play
         p = self.players[player_id]
         valid_actions = []
@@ -288,8 +281,8 @@ class AzulEnv(gym.Env):
                     for queue in range(6):
                         if p.is_valid(color, queue):  # check that the player can put the color into this queue
                             valid_actions.append((repo, color_id, queue))
-        return list(map(lambda repo, color, queue: {'player_id': player_id,
-                                                    'take': {'repo': repo, 'color': color},
-                                                    'put': queue},
+        return list(map(lambda act: {'player_id': player_id,
+                                                    'take': {'repo': act[0], 'color': act[1]},
+                                                    'put': act[2]},
                         valid_actions))
 
