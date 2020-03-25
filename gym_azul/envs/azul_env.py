@@ -12,10 +12,8 @@ from gym_azul.classes.box_wrapper import BoxWrapper
 from gym_azul.utils import *
 from random import shuffle, choice
 
-
 # Constants
 MAX_PENALTY = 7
-
 
 # Setup logging
 path = 'config.yaml'  # always use slash in packages
@@ -58,14 +56,16 @@ player_space = spaces.Dict({
 })
 repo_space = spaces.Dict({t: spaces.Discrete(21) for t in Tile})
 
+
 class AzulEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, n_players=2):
         self.__version__ = "0.0.1"
         logging.info("AzulEnv - Version {}".format(self.__version__))
-        
+
         self.n_players = n_players
+        self.tolerant = False
 
         # initializes repositories
         if self.n_players == 2:
@@ -78,8 +78,9 @@ class AzulEnv(gym.Env):
             raise ValueError("n_players must be 2, 3 or 4")
 
         # Internal state
-        self.turn_to_play = 0 # Whose turn is it to play
-        self.repos = [OrderedDict(sorted({t: 0 for t in Tile}.items())) for _ in range(self.n_repos + 1)]  # 0 is the center repo
+        self.turn_to_play = 0  # Whose turn is it to play
+        self.repos = [OrderedDict(sorted({t: 0 for t in Tile}.items())) for _ in
+                      range(self.n_repos + 1)]  # 0 is the center repo
         self.players = [Player() for _ in range(self.n_players)]
         # Action space
         self.action_space = spaces.Dict({
@@ -100,23 +101,23 @@ class AzulEnv(gym.Env):
 
     def step(self, action):
         assert not self.ending_condition(), "Le jeu est terminé, décroche"
-        assert 0 <= action["player_id"] < self.n_players
+        assert 0 <= action["player_id"] < self.n_players, "Your player does not exists"
         # The player ID is redundant, it is only used to check if the agent is properly working
-        if action["player_id"] != self.turn_to_play:
+
+        # Some validity checks: player, repos and 'put' action
+        if action["player_id"] != self.turn_to_play:  # player validity
             print("Wrong player ID: expected {} but got {}".format(self.turn_to_play, action["player_id"]))
             return self.invalid_action()
 
         p = self.players[self.turn_to_play]
-        # Take the tiles
         repo = action["take"]["repo"]
         color = list(Tile)[action["take"]["color"]]
-        if self.repos[repo][color] == 0:  # He took zero tile
+        if self.repos[repo][color] == 0:  # repos validity: the player took zero tile
             return self.invalid_action()
         n_tiles = self.repos[repo][color]
         q_id = action["put"]
 
-        # Check action validity
-        if not p.is_valid(color, q_id):
+        if not p.is_valid(color, q_id):  # 'put' action validity
             return self.invalid_action()
 
         # Update repos
@@ -147,7 +148,8 @@ class AzulEnv(gym.Env):
 
     def reset(self):
         self.turn_to_play = 0
-        self.repos = [OrderedDict(sorted({t: 0 for t in Tile}.items())) for _ in range(self.n_repos + 1)]  # 0 is the center repo
+        self.repos = [OrderedDict(sorted({t: 0 for t in Tile}.items())) for _ in
+                      range(self.n_repos + 1)]  # 0 is the center repo
         self.players = [Player() for _ in range(self.n_players)]
         self.fill_repos()
         return self.observe()
@@ -163,7 +165,7 @@ class AzulEnv(gym.Env):
         print()
         for i in range(self.n_players):
             print("Player {}:".format(i), str(self.players[i]), sep='\n')
-        
+
     def close(self):
         # TODO
         pass
@@ -194,10 +196,10 @@ class AzulEnv(gym.Env):
             next_repo += 1
         if next_repo < self.n_repos:
             self.repos[next_repo] = OrderedDict(sorted({t: all_tiles.count(t) for t in Tile}.items()))
-            next_repo +=1
+            next_repo += 1
             while next_repo < self.n_repos:
                 self.repos[next_repo] = OrderedDict(sorted({t: 0 for t in Tile}.items()))
-                next_repo +=1
+                next_repo += 1
         self.repos[0] = OrderedDict(sorted({t: 0 for t in Tile}.items()))
 
     def all_repos_empty(self):
@@ -213,10 +215,10 @@ class AzulEnv(gym.Env):
         player_id = self.turn_to_play
         others = self.players[:player_id] + self.players[player_id + 1:]
         d = OrderedDict(sorted({
-            "you": self.players[player_id].observe(),
-            "others": tuple(p.observe() for p in others),
-            "repos": tuple(self.repos)
-        }.items()))
+                                   "you": self.players[player_id].observe(),
+                                   "others": tuple(p.observe() for p in others),
+                                   "repos": tuple(self.repos)
+                               }.items()))
         return d
 
     def ending_condition(self):
@@ -228,20 +230,19 @@ class AzulEnv(gym.Env):
     def is_valid(self, action):
         action["player_id"] == self.turn_to_play
         not self.ending_condition()
-        #TODO
+        # TODO
 
-    def invalid_action(self, sample=True):
+    def invalid_action(self):
         """
         returns a penalized observation if the agent tried an invalid action.
-        If sample == True (necessary otherwise the game gets stuck), samples a random valid action, if not does nothing
+        If self.tolerant, samples a random valid action (so that the game does not get stuck), if not it raises an error
         """
-        if sample:
+        if self.tolerant:
             replacement = self.sample_action()
             state, _, done, _ = self.step(replacement)
             return state, -100, done, {}
         else:
-            self.turn_to_play = (self.turn_to_play + 1) % self.n_players
-            return self.observe(), -100, self.ending_condition(), {}
+            raise ValueError("Action is invalid")
 
     def sample_action(self):
         """
@@ -269,3 +270,6 @@ class AzulEnv(gym.Env):
         returns id and score of the winner
         """
         return max([(i, p.score) for i, p in enumerate(self.players)], key=lambda x: x[1])
+
+    def set_tolerant(self, bool):
+        self.tolerant = bool

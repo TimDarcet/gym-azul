@@ -54,38 +54,80 @@ class Critic(nn.Module):
         return score
 
 
-class RandomAgent:
+class Agent:
+    """
+    An abstract class for agents
+    """
+    def __init__(self):
+        self.stats = {'victories': 0, 'games': 0}
+
+    def play(self, state, env, player_id):
+        # MUST BE OVERLOADED
+        pass
+
+    def update(self):
+        pass
+
+    def save(self, path):
+        pass
+
+    def load(self, path):
+        pass
+
+    def reset(self):
+        pass
+
+    def next_game(self, result):
+        self.stats['victories'] += result
+        self.stats['games'] += 1
+        self.reset()  # to be sure
+
+class RandomAgent(Agent):
     """
     An agent playing randomly
     """
 
     def __init__(self):
-        self.stats = {'victories': 0, 'games': 0}
+        super().__init__()
 
     def play(self, state, env, player_id):
         action = env.sample_action()
         new_state, _, done, _ = env.step(action)
         return new_state, done
 
-    def update(self):
-        pass
+class HumanAgent(Agent):
+    """
+    An agent that asks you to play
+    """
+    def __init__(self):
+        super().__init__()
 
-    def next_game(self, result):
-        self.stats['victories'] += result
-        self.stats['games'] += 1
+    def play(self, state, env, player_id):
+        print('Your turn to play (player {})! Current state:'.format(player_id))
+        played = False
+        env.render()
+        while not played:
+            print('Your move (type "i j k" where i is a repo ID, j is a color ID and k is a queue ID):')
+            try:
+                repo, color, queue = input().split()
+                repo, color, queue = int(repo), int(color), int(queue)
+                assert 0 <= repo < env.n_repos and 0 <= color < 5 and 0 <= queue < 6
+                action = {'player_id': player_id, 'take': {'repo': repo, 'color': color}, 'put': queue}
+                new_state, _, done, _ = env.step(action)
+            except (ValueError, AssertionError):
+                print('Your action is invalid, please try again')
+            else:
+                played = True
+        return new_state, done
 
-    def load(self, path):
-        pass
 
-    def save(self, path):
-        pass
-
-
-class Agent:
+class A2CAgents(Agent):
     """
     An agent learning with A2C
     """
     def __init__(self, state_dim, action_dim, hidden_dim, actor_optim, critic_optim, actor_lr= 1e-2, critic_lr=1e-3, gamma=0.9, nb_channels=1):
+        super().__init__()
+
         # initializes networks
         self.actor = Actor(state_dim, action_dim, hidden_dim)
         self.critic = Critic(state_dim, hidden_dim)
@@ -108,14 +150,13 @@ class Agent:
         self.actor_optim = actor_optim(self.actor.parameters(), lr=actor_lr)
         self.critic_optim = critic_optim(self.critic.parameters(), lr=critic_lr)
 
-        self.stats = {'victories': 0, 'games': 0}
-
     def play(self, state, env, player_id):
         state = preprocess(state)  # converts into tensor
         distr = self.actor(state)
         action = np.random.choice(list(range(self.action_dim)), p=distr.detach().numpy())
+        env.set_tolerant(True)  # so that the env samples a random action if the action is invalid
         new_state, reward, done, _ = env.step(postprocess(action, player_id, env.n_repos))
-
+        env.set_tolerant(False)
         # records history for updating weights later
         if self.nb_channels > 1:
             channel_id = player_id  # only considers the case where the agent plays for different players, no different games !!
