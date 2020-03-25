@@ -315,6 +315,8 @@ class MCTSAgent(Agent):
                 if dummy_env.observe() == state: #TODO: is this an efficient comparison ?
                     self.mct = child
                     break
+            else:
+                raise ValueError("Couldn't find the action that led to this env")
 
         # repeatedly expand the tree
         start_t = time.time()
