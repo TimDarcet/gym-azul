@@ -238,15 +238,21 @@ class MCT:
     A Monte-Carlo tree
     """
     exploration_rate = np.sqrt(2)
-
+    id = 0
     def __init__(self):
         self.action = None
         self.n_plays = 0
         self.n_wins = 0
         self.children = []
+        self.id = MCT.id
+        MCT.id += 1
+
+    def __str__(self):
+        return 'Node {} [{}/{}]'.format(self.id, self.n_wins, self.n_plays)
 
     def go_down(self, env, player_id):
         if len(self.children) > 0:
+
             # already explored node, we choose a children and go down him
 
             # UCB formula for exploration - exploitation tradeoff
@@ -261,7 +267,9 @@ class MCT:
 
             child = random.choices(self.children, weights=weights)[0]
 
-            env.step(child.action)
+            print(self.id, env.valid_actions() == [c.action for c in self.children])
+
+            _, _, done, _ = env.step(child.action)
             win = child.go_down(env, player_id)
             self.n_plays += 1
             if win:
@@ -271,22 +279,21 @@ class MCT:
             # no child: either it was never explored, or it is terminal
             done = env.ending_condition()
             if done:
-                print('reached a terminal node')
                 return player_id == env.get_winner()
 
             # it was not explored
             for act in env.valid_actions():
                 self.children.append(MCT())
                 self.children[-1].action = act
+
             child = random.choice(self.children)
-            print('expanding a node')
             env.step(child.action)
 
             done = env.ending_condition() # if the child is terminal, don't further simulate
             while not done:
                 action = env.sample_action()
                 _, _, done, _ = env.step(action)
-            win = player_id == env.get_winner()
+            win = player_id == env.get_winner()[0]
             child.n_plays += 1
             self.n_plays += 1
             if win:
@@ -300,7 +307,7 @@ class MCTSAgent(Agent):
     An agent using Monte-Carlo Tree Search. Works only for 2 players !
     """
 
-    def __init__(self, timeout=2):
+    def __init__(self, timeout=0.3):
         super().__init__()
         self.mct = MCT()
         self.timeout = timeout
