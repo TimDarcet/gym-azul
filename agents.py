@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 import numpy as np
-
+from gym_azul.classes.box_wrapper import convertor
 
 def preprocess(state):
     """
@@ -21,7 +21,6 @@ def postprocess(action, player_id, n_repos):
     return env_action
 
 
-
 class Actor(nn.Module):
     """
     Policy network: given a state, produces a distribution on actions
@@ -37,6 +36,7 @@ class Actor(nn.Module):
         if not logit:
             return F.softmax(score, dim=-1)
         return score
+
 
 class Critic(nn.Module):
     """
@@ -82,6 +82,7 @@ class Agent:
         self.stats['games'] += 1
         self.reset()  # to be sure
 
+
 class RandomAgent(Agent):
     """
     An agent playing randomly
@@ -94,6 +95,7 @@ class RandomAgent(Agent):
         action = env.sample_action()
         new_state, _, done, _ = env.step(action)
         return new_state, done
+
 
 class HumanAgent(Agent):
     """
@@ -121,16 +123,22 @@ class HumanAgent(Agent):
         return new_state, done
 
 
-class A2CAgents(Agent):
+class A2CAgent(Agent):
     """
     An agent learning with A2C
     """
-    def __init__(self, state_dim, action_dim, hidden_dim, actor_optim, critic_optim, actor_lr= 1e-2, critic_lr=1e-3, gamma=0.9, nb_channels=1):
+    def __init__(self, env, hidden_dim, actor_optim, critic_optim, actor_lr= 1e-2, critic_lr=1e-3, gamma=0.9, nb_channels=1):
         super().__init__()
 
+        self.box_convertor = convertor(env.observation_space)
+        self.action_dim = 5 * 6 * (env.n_repos + 1)
+
+        self.state_dim = self.box_convertor.out_space.shape[0]
+
+
         # initializes networks
-        self.actor = Actor(state_dim, action_dim, hidden_dim)
-        self.critic = Critic(state_dim, hidden_dim)
+        self.actor = Actor(self.state_dim, self.action_dim, hidden_dim)
+        self.critic = Critic(self.state_dim, hidden_dim)
 
         # if nb_channels > 1, the agent plays for several players (or in several games) and the histories must be tracked parallely
         self.nb_channels = nb_channels
@@ -141,8 +149,6 @@ class A2CAgents(Agent):
         self.logodds = [[] for _ in range(self.nb_channels)]
 
         # some info
-        self.action_dim = action_dim
-        self.state_dim = state_dim
         self.hidden_dim = hidden_dim
         self.gamma = gamma
 
@@ -151,7 +157,7 @@ class A2CAgents(Agent):
         self.critic_optim = critic_optim(self.critic.parameters(), lr=critic_lr)
 
     def play(self, state, env, player_id):
-        state = preprocess(state)  # converts into tensor
+        state = preprocess(self.box_convertor(state))  # converts into tensor
         distr = self.actor(state)
         action = np.random.choice(list(range(self.action_dim)), p=distr.detach().numpy())
         env.set_tolerant(True)  # so that the env samples a random action if the action is invalid

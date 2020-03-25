@@ -1,12 +1,12 @@
 import gym
 import os
 import torch.optim as optim
-from agents import A2CAgents, RandomAgent, HumanAgent
-from gym_azul.classes.box_wrapper import BoxWrapper
+from agents import A2CAgent, RandomAgent, HumanAgent
+
 
 # learning parameters
 N_EPISODES = 150  # a few hours on a local pc
-PLAYING_MODE = 'manual'
+PLAYING_MODE = 'self'
 # 'self' -> self play,
 # 'adversarial' -> several networks learn against each others,
 # 'random' -> against a random baseline
@@ -33,10 +33,7 @@ load_from = 'checkpoints/144999.pt'  # to use pretrained agents
 
 # ================== SET UP ENVIRONMENT ====================================
 
-env = BoxWrapper(gym.make("gym_azul:azul-v0", n_players=N_PLAYERS))
-
-state_dim = env.observation_space.shape[0]
-action_dim = 5 * 6 * (env.n_repos + 1)
+env = gym.make("gym_azul:azul-v0", n_players=N_PLAYERS)
 
 if not os.path.exists(save_to):
     os.mkdir(save_to)
@@ -50,7 +47,7 @@ if PLAYING_MODE == 'adversarial':
     for i in range(N_PLAYERS):
         actor_optim = optim.Adam
         critic_optim = optim.Adam
-        agent = A2CAgents(state_dim, action_dim, HIDDEN_DIM, actor_optim, critic_optim, ACTOR_LR, CRITIC_LR, GAMMA)
+        agent = A2CAgent(env, HIDDEN_DIM, actor_optim, critic_optim, ACTOR_LR, CRITIC_LR, GAMMA)
         if load_from:
             agent.load(load_from)
         agents.append(agent)
@@ -59,8 +56,8 @@ if PLAYING_MODE == 'self':
     # n times the same learning agent
     actor_optim = optim.Adam
     critic_optim = optim.Adam
-    agent = A2CAgents(state_dim, action_dim, HIDDEN_DIM, actor_optim, critic_optim, ACTOR_LR, CRITIC_LR, GAMMA,
-                      nb_channels=N_PLAYERS)
+    agent = A2CAgent(env, HIDDEN_DIM, actor_optim, critic_optim, ACTOR_LR, CRITIC_LR, GAMMA,
+                     nb_channels=N_PLAYERS)
     if load_from:
         agent.load(load_from)
     for i in range(N_PLAYERS):
@@ -70,7 +67,7 @@ if PLAYING_MODE == 'random':
     # 1 learning agent and n-1 random agents
     actor_optim = optim.Adam
     critic_optim = optim.Adam
-    agent = A2CAgents(state_dim, action_dim, HIDDEN_DIM, actor_optim, critic_optim, ACTOR_LR, CRITIC_LR, GAMMA)
+    agent = A2CAgent(env, HIDDEN_DIM, actor_optim, critic_optim, ACTOR_LR, CRITIC_LR, GAMMA)
     if load_from:
         agent.load(load_from)
     agents.append(agent)
@@ -82,7 +79,7 @@ if PLAYING_MODE == 'manual':
     assert N_PLAYERS == 2
     actor_optim = optim.Adam
     critic_optim = optim.Adam
-    agent = A2CAgents(state_dim, action_dim, HIDDEN_DIM, actor_optim, critic_optim, ACTOR_LR, CRITIC_LR, GAMMA)
+    agent = A2CAgent(env, HIDDEN_DIM, actor_optim, critic_optim, ACTOR_LR, CRITIC_LR, GAMMA)
     if load_from:
         agent.load(load_from)
     agents.append(agent)
